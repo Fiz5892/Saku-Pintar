@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../component/ui/button";
 import { Input } from "../component/ui/input";
@@ -8,11 +8,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../component/ui/tabs";
 import { useAuth } from "../hooks/useAuth";
 import { toast } from "sonner";
 import { Wallet, Loader2 } from "lucide-react";
-import { useEffect } from "react";
+
+// Declare Google type
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +34,64 @@ const Auth = () => {
       navigate("/dashboard");
     }
   }, [user, navigate]);
+
+  // Initialize Google Sign-In
+  useEffect(() => {
+    // Load Google Sign-In script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+        });
+
+        // Render button for sign in
+        const signInButton = document.getElementById('google-signin-button');
+        if (signInButton) {
+          window.google.accounts.id.renderButton(signInButton, {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signin_with',
+          });
+        }
+
+        // Render button for sign up
+        const signUpButton = document.getElementById('google-signup-button');
+        if (signUpButton) {
+          window.google.accounts.id.renderButton(signUpButton, {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signup_with',
+          });
+        }
+      }
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const handleGoogleCallback = async (response: any) => {
+    setIsLoading(true);
+    const { error } = await signInWithGoogle(response.credential);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Login dengan Google berhasil!");
+      navigate("/dashboard");
+    }
+    setIsLoading(false);
+  };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -118,6 +190,19 @@ const Auth = () => {
                     "Masuk"
                   )}
                 </Button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Atau lanjutkan dengan
+                    </span>
+                  </div>
+                </div>
+
+                <div id="google-signin-button" className="w-full flex justify-center"></div>
               </form>
             </TabsContent>
 
@@ -164,6 +249,19 @@ const Auth = () => {
                     "Daftar"
                   )}
                 </Button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Atau lanjutkan dengan
+                    </span>
+                  </div>
+                </div>
+
+                <div id="google-signup-button" className="w-full flex justify-center"></div>
               </form>
             </TabsContent>
           </Tabs>

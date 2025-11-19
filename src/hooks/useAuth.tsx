@@ -29,7 +29,7 @@ interface AuthResponse {
   error: AuthError | null;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -186,6 +186,35 @@ export const useAuth = () => {
     }
   };
 
+  const signInWithGoogle = async (credential: string): Promise<AuthResponse> => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/google`, {
+        credential,
+      });
+
+      if (response.data.token) {
+        const { token, user, expiresAt } = response.data;
+
+        // Save to localStorage
+        saveAuthData(token, user, expiresAt);
+
+        setUser(user);
+        setSession({ user, token, expiresAt });
+
+        return { data: response.data, error: null };
+      }
+
+      return { data: null, error: { message: "Google signin failed" } };
+    } catch (error: any) {
+      return {
+        data: null,
+        error: {
+          message: error.response?.data?.message || "Google signin failed",
+        },
+      };
+    }
+  };
+
   const signOut = async () => {
     try {
       await axios.post(`${API_URL}/auth/signout`);
@@ -207,6 +236,7 @@ export const useAuth = () => {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
   };
 };

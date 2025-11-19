@@ -6,6 +6,13 @@ export default defineConfig(async ({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/api/, "/api"),
+      },
+    },
   },
   plugins: [
     react(),
